@@ -38,6 +38,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import uuid
 import zipfile
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Tuple
@@ -145,9 +146,16 @@ def can_install(frozen: bool, app_dir: str) -> Tuple[bool, str]:
         return False, "running from source"
     if not os.path.isfile(os.path.join(app_dir, EXE_NAME)):
         return False, f"{EXE_NAME} not found in {app_dir}"
+    # On Windows tempfile retries PermissionError when os.access says the directory
+    # is writable, even if its ACL denies creating/deleting files (Program Files).
+    # One exclusive open gives the real answer without blocking application startup.
+    probe = os.path.join(app_dir, f".halobattery-write-{uuid.uuid4().hex}.tmp")
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_TEMPORARY", 0)
     try:
-        with tempfile.TemporaryFile(dir=app_dir):
-            pass
+        fd = os.open(probe, flags, 0o600)
+        os.close(fd)
+        if os.name != "nt":
+            os.unlink(probe)
     except OSError:
         return False, f"{app_dir} cannot be written"
     return True, ""

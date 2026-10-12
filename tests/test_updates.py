@@ -238,6 +238,16 @@ class CommandLineTests(TempDirTestCase):
         self.assertFalse(updates.can_install(True, self.tmp)[0])          # no exe there
         self.write("HaloBattery.exe")
         self.assertEqual(updates.can_install(True, self.tmp), (True, ""))
+        self.assertEqual(os.listdir(self.tmp), ["HaloBattery.exe"])
+
+    def test_denied_install_folder_does_not_retry_or_block_startup(self):
+        self.write("HaloBattery.exe")
+        with mock.patch.object(updates.os, "access", return_value=True), \
+                mock.patch.object(updates.os, "open", side_effect=PermissionError("access denied")) as opened:
+            self.assertEqual(updates.can_install(True, self.tmp),
+                             (False, f"{self.tmp} cannot be written"))
+        opened.assert_called_once()
+        self.assertEqual(os.listdir(self.tmp), ["HaloBattery.exe"])
 
     def test_staged_copy_keeps_the_data_of_the_app_it_updates(self):
         argv = ["x.exe", "--finish-update", "--app-dir", self.tmp, "--pid", "1"]
