@@ -91,6 +91,11 @@ while charging. The README is shorter; the device list moved to `docs/devices.md
   saying "level shown only while Steam or a game uses the controller". Confirmed on a
   real Pro 3 over Bluetooth, with Steam closed.
 - Preferences > "Keep disconnected devices until restart" (off by default): the icon of a controller, headset or Bluetooth device that disconnects stays in the tray, greyed, with its last level, until the device comes back or the app restarts (#151).
+- WLmouse receiver with the mouse switched off: the walk of every vendor collection
+  plus the two-second listen ran on every poll forever, even after the greyed icon
+  was gone. It now runs every fifth poll once nothing is shown - and at once when
+  the receiver's device set changes, such as the charging cable appearing (#62
+  item 5, reported by @ahmedkhursheed23).
 
 ## [1.13.0] - 2026-09-29
 
