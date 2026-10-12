@@ -49,6 +49,9 @@ and the project follows [Semantic Versioning](https://semver.org/).
   answering at once while charging - they now share one icon, with the charging reading
   winning when both answer.
 - Pulsar X2 CrazyLight Mini (`3710:5406` on its dongle, `3710:3414` on the cable): the same 17-byte command-0x04 power exchange as the other Pulsar/ATK mice, mirrored from the frames the reporter of [#164](https://github.com/HeyOkay/HaloBattery/issues/164) tested on their own hardware on both transports. Confirmed on hardware - their run of the branch read both transports.
+- NZXT Lift Elite Wireless (`1e71:2101`, the "NZXT Lift Elite Dongle"): the battery is read with the same telemetry request NZXT CAM uses, decoded from USBPcap captures of CAM (field map and the `ffca:0001` collection in `docs/protocols.md`). Charging follows the cable. The same mouse on its USB cable (`1e71:2129`) is read too. Confirmed on hardware by @MrBeat93 ([#148](https://github.com/HeyOkay/HaloBattery/issues/148)): both connections read (2.4 GHz and USB cable), the level tracks CAM (one step above CAM's smoothed panel), and the charging flag follows the cable. While CAM is open the dongle does not answer and the last value stays on a greyed icon. On
+  review (@ahmedkhursheed23) the mouse's two ids became one icon (keyed on the receiver's
+  id), and a silent id can no longer add a greyed twin while the other one answers.
 
 ## [1.14.0] - 2026-10-05
 
