@@ -6,6 +6,19 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-10-12
+
+Updates install from the app: **Update to vX.Y.Z** downloads the new version, checks it,
+replaces the program files and restarts, and the first start after an update shows what
+is new. Coming from 1.14.0 or older, download this one by hand; later versions install
+from the app. **Check for updates now** and **Keep disconnected devices until restart** in
+Preferences, and a 5% low battery alert. New devices: Steam Controller (2025), NZXT Lift
+Elite, MCHOSE A5 Pro Max, HyperX Cloud II Core Wireless, Pulsar X2 CrazyLight Mini,
+Corsair Virtuoso RGB Wireless SE / XT, Razer BlackShark V2 Pro (2020), SteelSeries Arctis
+GameBuds X and older Logitech HID++ 1.0 keyboards and mice. Fixes for the Corsair Dark
+Core RGB Pro SE, sleeping Pulsar / ATK / VXE mice, the 8BitDo Pro 3 over Bluetooth and a
+switched-off WLmouse receiver.
+
 ### Added
 - **Update from the app**: the **Update to vX.Y.Z** menu item (it used to open the release
   page) now downloads the new version, checks it against the size and SHA-256 that GitHub
@@ -957,7 +970,8 @@ First public release.
   in or unplugged.
 - Settings and the autostart entry are migrated from the app's earlier name, Battery Tray.
 
-[Unreleased]: ../../compare/v1.14.0...HEAD
+[Unreleased]: ../../compare/v1.15.0...HEAD
+[1.15.0]: ../../compare/v1.14.0...v1.15.0
 [1.14.0]: ../../compare/v1.13.0...v1.14.0
 [1.13.0]: ../../compare/v1.12.0...v1.13.0
 [1.12.0]: ../../compare/v1.11.0...v1.12.0
