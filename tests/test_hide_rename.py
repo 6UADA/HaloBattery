@@ -423,7 +423,8 @@ class MenuLayoutTests(HideRenameTestCase):
                                  "Device types",
                                  "Device pictogram", "Percentage in the icon", "Charging animation",
                                  "Icon colour", "Status file for other apps",
-                                 "Start with Windows", "Check for updates"])
+                                 "Start with Windows", "Check for updates",
+                                 "Check for updates now"])
 
 
 class MenuRefreshTests(unittest.TestCase):

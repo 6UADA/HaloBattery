@@ -6,6 +6,21 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Update from the app**: the **Update to vX.Y.Z** menu item (it used to open the release
+  page) now downloads the new version, checks it against the size and SHA-256 that GitHub
+  lists for the release zip, closes the app, replaces the program files and starts the new
+  version. Settings, the log, the battery history and `portable.txt` are not touched; if
+  anything goes wrong the old files are put back and the old version starts again. When
+  the app is run from source or sits in a folder it cannot write to, the item opens the
+  release page as before.
+- **What's new** window: the first start after an update shows the new version's release
+  notes in short, in a small window in the style of the tray menu (blurred background,
+  light or dark like Windows), with a link to the full notes.
+- **Preferences > Check for updates now**: checks at once, also when the daily check is
+  off, and always answers with a notification (a newer version, the latest one already,
+  or why it could not check).
+
 ## [1.14.0] - 2026-10-05
 
 Portable mode: with a `portable.txt` next to the app, settings and the log stay in its
