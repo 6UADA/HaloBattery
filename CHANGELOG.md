@@ -90,6 +90,7 @@ while charging. The README is shorter; the device list moved to `docs/devices.md
   app waited for report 0x01 over Bluetooth and discarded every report, so the icon kept
   saying "level shown only while Steam or a game uses the controller". Confirmed on a
   real Pro 3 over Bluetooth, with Steam closed.
+- Preferences > "Keep disconnected devices until restart" (off by default): the icon of a controller, headset or Bluetooth device that disconnects stays in the tray, greyed, with its last level, until the device comes back or the app restarts (#151).
 
 ## [1.13.0] - 2026-09-29
 

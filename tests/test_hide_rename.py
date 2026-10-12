@@ -419,6 +419,7 @@ class MenuLayoutTests(HideRenameTestCase):
         self.assertEqual(texts, ["Poll interval", "Low battery alert", "Alert when fully charged",
                                  "Estimated time left", "Quiet while gaming",
                                  "Sound with the low battery alert",
+                                 "Keep disconnected devices until restart",
                                  "Windows Bluetooth devices", "PlayStation full mode (Bluetooth)",
                                  "Device types",
                                  "Device pictogram", "Percentage in the icon", "Charging animation",
