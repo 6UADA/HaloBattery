@@ -31,6 +31,7 @@ import tempfile
 import threading
 import time
 import zlib
+from dataclasses import replace
 from logging.handlers import RotatingFileHandler
 from typing import Callable, Dict, List, Optional, Set
 
@@ -129,9 +130,9 @@ from providers import (AmInfinityProvider, AstroProvider, AsusProvider,  # noqa:
                        HyperXProvider, JblProvider,
                        KeychronProvider, LamzuProvider, LofreeProvider, LogitechProvider,
                        LogitechCenturionProvider,
-                       MchoseProvider, NintendoProvider, PlayStationProvider, PulsarProvider,
+                       MchoseProvider, NintendoProvider, NzxtProvider, PlayStationProvider, PulsarProvider,
                        RazerProvider, SteelSeriesEliteProvider, SteelSeriesProvider,
-                       WLmouseProvider, XInputProvider)
+                       WLmouseProvider, XInputProvider, SteamProvider)
 from providers.bluetooth import BluetoothWatcher  # noqa: E402
 from providers.jbl import PROBE_LISTEN_S as JBL_PROBE_LISTEN_S  # noqa: E402
 
@@ -162,6 +163,7 @@ DEFAULTS = {
     "time_left": True,      # "about N h of use left" in the tooltip (history.py)
     "percent_in_icon": False,  # the level as a number in the ring, instead of the pictogram
     "quiet_fullscreen": True,  # while a game is full screen: hold alerts, poll every 5 min
+    "keep_disconnected": False,  # keep a gone device's icon, greyed with its last level, until restart (#151)
     "status_file": False,      # write status.json for Rainmeter, Stream Deck, scripts
 }
 
@@ -178,7 +180,7 @@ PROVIDER_LABELS = {
     "gwolves": "G-Wolves mice",
     "hyperx": "HyperX Cloud II Wireless",
     "hyperx_alpha2": "HyperX Cloud Alpha 2",
-    "hyperx_cloud3": "HyperX Cloud III Wireless",
+    "hyperx_cloud3": "HyperX Cloud III Wireless, Cloud II Core Wireless",
     "hyperx_cloud3s": "HyperX Cloud III S Wireless",
     "jbl": "JBL Quantum",
     "keychron": "Keychron",
@@ -188,9 +190,11 @@ PROVIDER_LABELS = {
     "logitech_centurion": "Logitech G PRO X 2 LIGHTSPEED",
     "mchose": "MCHOSE mice",
     "nintendo": "Nintendo Switch controllers",
+    "nzxt": "NZXT mice",
     "playstation": "PlayStation controllers",
     "pulsar": "Pulsar / ATK VXE mice",
     "razer": "Razer mice and headsets",
+    "steam": "Steam Controller (2025)",
     "steelseries": "SteelSeries",
     "steelseries_elite": "SteelSeries Arctis Nova Elite",
     "wlmouse": "WLmouse",
@@ -207,7 +211,8 @@ def make_providers(jbl_listen_first: float = 0.0) -> list:
             PlayStationProvider(), EightBitDoProvider(), BarracudaProvider(), NintendoProvider(),
             AsusProvider(), GWolvesProvider(), LofreeProvider(), AstroProvider(), CorsairProvider(),
             LamzuProvider(), AmInfinityProvider(),
-            SteelSeriesEliteProvider(), LogitechCenturionProvider(), HyperXCloud3SProvider()]
+            SteelSeriesEliteProvider(), LogitechCenturionProvider(), HyperXCloud3SProvider(), NzxtProvider(),
+            SteamProvider()]
 
 
 # ---------------------------------------------------------------- config
@@ -502,6 +507,10 @@ def single_instance() -> bool:
 # game, 4 = presentation mode. 5 = normal; 1, 6 and 7 are not about the screen.
 QUNS_FULLSCREEN = (2, 3, 4)
 QUIET_INTERVAL = 300       # s between polls while a game is full screen
+INPUT_WAKE_GAP = 5          # s between input-driven re-reads of a greyed (asleep)
+                            # device: the first input re-reads it at once, and while
+                            # input keeps coming (touchpad, typing) a poll every few
+                            # seconds still sees the device wake (see wait_next, #87)
 
 
 def fullscreen_app_running() -> bool:
@@ -756,6 +765,39 @@ def drop_bluetooth_duplicates(results: List[DeviceStatus],
     return kept
 
 
+try:                             # Win32 only; harmless to define elsewhere
+    import ctypes as _ctypes
+
+    class LASTINPUTINFO(_ctypes.Structure):
+        """Defined once: this used to be re-declared on every wait-loop tick
+        (review by @ahmedkhursheed23, #202)."""
+        _fields_ = [("cbSize", _ctypes.c_uint), ("dwTime", _ctypes.c_uint)]
+except Exception:                # pragma: no cover
+    LASTINPUTINFO = None
+
+
+def last_input_ms() -> Optional[int]:
+    """The tick of the last keyboard or mouse input anywhere on Windows, or None.
+
+    Used to notice the user coming back to the PC: a sleeping mouse is awake by the
+    time its first movement lands here, so a device whose reading is greyed out
+    (asleep) can be re-read right then instead of at the next scheduled poll - see
+    wait_next(). A few seconds of accuracy are irrelevant; only "there was a pause,
+    then input" matters."""
+    if sys.platform != "win32" or LASTINPUTINFO is None:
+        return None
+    try:
+        import ctypes
+
+        info = LASTINPUTINFO()
+        info.cbSize = ctypes.sizeof(LASTINPUTINFO)
+        if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)):
+            return None
+        return int(info.dwTime)
+    except Exception:            # a probe must never take the app down
+        return None
+
+
 def describe(st: DeviceStatus, name: Optional[str] = None, left: str = "") -> str:
     """The tooltip text. `name` replaces the device's own name (set with "Rename..."),
     `left` is the estimated time left ("about 5 h of use left"), shown only while the
@@ -879,8 +921,7 @@ class DeviceIcon:
     def _update(self, st: DeviceStatus) -> None:
         self.status = st
         badge = self.app.pictogram(st) if self.app.cfg["badges"] else ""
-        animate = (self.app.cfg["animation"] and st.charging and st.online
-                   and st.level is not None)
+        animate = self.app.cfg["animation"] and st.charging and st.online
         # the number replaces the pictogram; a device that only reports rough steps
         # (st.approx) keeps its pictogram rather than showing a made-up exact number
         text = (str(st.level) if self.app.cfg.get("percent_in_icon") and st.level is not None
@@ -1012,6 +1053,7 @@ class App:
         self.low_sound_at: Dict[str, float] = {}   # key -> time.monotonic() of the last sound
         self.full_state: Dict[str, str] = {}   # key -> charging / full / idle
         self.missing: Dict[str, int] = {}
+        self.input_wake_at = 0.0               # last input-driven poll of a greyed device (#87)
         self.bt_cache: List[DeviceStatus] = []
         self.hid_results: List[DeviceStatus] = []   # the last poll, before the Bluetooth merge
         self.anim_tick = 0
@@ -1090,7 +1132,7 @@ class App:
 
         intervals = [(15, "15 s"), (30, "30 s"), (60, "1 min"), (120, "2 min"), (300, "5 min")]
         themes = [("auto", "Automatic"), ("white", "White"), ("black", "Black")]
-        lows = [(0, "Off"), (10, "10%"), (15, "15%"), (20, "20%"), (25, "25%"), (30, "30%")]
+        lows = [(0, "Off"), (5, "5%"), (10, "10%"), (15, "15%"), (20, "20%"), (25, "25%"), (30, "30%")]
 
         def update_text(_item):
             if not self.update:
@@ -1168,6 +1210,8 @@ class App:
             # for full-screen games, where the notification is not seen (#66)
             Item("Sound with the low battery alert", toggle("low_sound"),
                  checked=lambda it: self.cfg.get("low_sound", False)),
+            Item("Keep disconnected devices until restart", toggle("keep_disconnected"),
+                 checked=lambda it: self.cfg.get("keep_disconnected", False)),
             Menu.SEPARATOR,
             Item("Windows Bluetooth devices", toggle("bluetooth"),
                  checked=lambda it: self.cfg["bluetooth"]),
@@ -1664,13 +1708,21 @@ class App:
         # presence comes from the reliable HID list (and its key switches between
         # the cable-only and Bluetooth forms when a cable is added to a BT pad),
         # so those go at once
+        keep = bool(self.cfg.get("keep_disconnected", False))
         gone = []
         with self.lock:
             for key in list(self.icons):
                 if key not in seen and (may_go is None or may_go(key)):
+                    st = self.icons[key].status
+                    if keep and st is not None and not st.online:
+                        continue      # already kept: greyed with its last level
                     self.missing[key] = self.missing.get(key, 0) + 1
                     limit = 1 if key.startswith(("xinput:", "bt:", "ps:")) else 2
-                    if self.missing[key] >= limit:
+                    if self.missing[key] >= limit and keep and st is not None:
+                        # "keep disconnected devices": grey icon, last level, no alerts
+                        self.icons[key].update(replace(st, online=False, charging=False))
+                        self.missing.pop(key, None)
+                    elif self.missing[key] >= limit:
                         gone.append(self.icons.pop(key))
                         # the icon is gone: stop counting, otherwise the quick
                         # 3-second re-check in wait_next() would go on forever
@@ -1828,6 +1880,21 @@ class App:
                     xs = None
         return (self.usb_signature(), xs)
 
+    def stale_device_shown(self) -> bool:
+        """True while a greyed reading is one that new input can wake - the provider
+        marks those (a sleeping receiver mouse is awake by the time its first movement
+        lands in GetLastInputInfo). wait_next() uses this to decide whether the user
+        coming back is worth a poll at once. A device that is greyed because it is
+        *off* (a headset waiting for its power button, an icon brought back by the
+        "keep disconnected devices" option) is deliberately not one of these: firing a
+        full poll on every keystroke, all day, was too wide a gate (review by
+        @ahmedkhursheed23, #202)."""
+        for ic in list(self.icons.values()):
+            st = getattr(ic, "status", None)
+            if st is not None and not st.online and getattr(st, "wake_on_input", False):
+                return True
+        return False
+
     def wait_next(self, sig=None):
         """Wait for the next scheduled poll, but wake up early when a device is
         plugged in, unplugged, switched on or off."""
@@ -1845,6 +1912,7 @@ class App:
         deadline = time.time() + interval
         if sig is None:
             sig = self.change_signature()
+        prev_input = last_input_ms()
         while not self.stop_evt.is_set():
             left = deadline - time.time()
             if left <= 0:
@@ -1864,6 +1932,24 @@ class App:
                 return
             if quiet and not self.quiet():
                 return                   # the game is closed: poll now and show what was held
+            if not quiet:
+                # the user is at the PC: a sleeping mouse is awake by the time its
+                # first movement lands here, so a greyed (asleep) reading is re-read
+                # at once instead of up to a minute later. That first input is the
+                # instant re-read. And while input simply keeps coming - the mouse
+                # can sleep during touchpad use, so when the hand comes back there
+                # was no pause for the old gate to see (#87) - a poll every few
+                # seconds notices the waking too, without a tight poll loop.
+                # Only readings whose provider marks them wake-on-input take part:
+                # an icon greyed because its device is off stays quiet (#202 review).
+                in_now = last_input_ms()
+                if in_now is not None:
+                    if in_now != prev_input and self.stale_device_shown() \
+                            and time.time() - self.input_wake_at >= INPUT_WAKE_GAP:
+                        self.input_wake_at = time.time()
+                        log.info("input while a reading is greyed: polling at once (#87)")
+                        return
+                    prev_input = in_now
 
     def anim_loop(self):
         """Advances the "breathing" frames of charging devices; other icons are left alone."""

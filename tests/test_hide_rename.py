@@ -90,6 +90,7 @@ def make_app(cfg=None):
     app.lock = threading.RLock()
     app.icons, app.missing, app.alerted, app.full_state = {}, {}, {}, {}
     app.low_sound_at = {}
+    app.input_wake_at = 0.0                 # wait_next's input-driven re-read (#87)
     app.placeholder = None
     app.wake = threading.Event()
     app.light_taskbar = False
@@ -419,6 +420,7 @@ class MenuLayoutTests(HideRenameTestCase):
         self.assertEqual(texts, ["Poll interval", "Low battery alert", "Alert when fully charged",
                                  "Estimated time left", "Quiet while gaming",
                                  "Sound with the low battery alert",
+                                 "Keep disconnected devices until restart",
                                  "Windows Bluetooth devices", "PlayStation full mode (Bluetooth)",
                                  "Device types",
                                  "Device pictogram", "Percentage in the icon", "Charging animation",
