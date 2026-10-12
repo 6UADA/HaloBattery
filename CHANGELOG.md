@@ -42,6 +42,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
   reporter's run on his 1K receiver: the level and the charging state, matching the
   MCHOSE software.
 - Logitech: devices with no HID++ 2.0 feature table (the older HID++ 1.0 generation - for example the M710 keyboard of the MK710 wireless desktop in [#159](https://github.com/HeyOkay/HaloBattery/issues/159)) are read through the old battery registers (`0x0D`/`0x07`), mirrored from Solaar. Confirmed on hardware in the reporter's test-build run. On review (@ahmedkhursheed23) a HID++ 2.0 error answer to a register read is recognised too - a 2.0 device without a battery feature no longer costs a timeout per register on such a poll.
+- HyperX Cloud II Core Wireless (03f0:0995 its dongle, 03f0:0795 its second mode): the
+  same `66 89` battery / `66 8a` charging exchange as the Cloud III Wireless, decoded
+  from the reporter's NGENUITY capture in [#155](https://github.com/HeyOkay/HaloBattery/issues/155).
+  Confirmed on hardware in the reporter's run, which also showed both connection ids
+  answering at once while charging - they now share one icon, with the charging reading
+  winning when both answer.
 
 ## [1.14.0] - 2026-10-05
 
