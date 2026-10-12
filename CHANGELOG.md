@@ -6,6 +6,12 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **A tidier repository and a shorter README**: the app's modules moved into the `halo/`
+  package (`halo_battery.pyw` stays the entry point), the .bat helpers into `scripts/`
+  and CONTRIBUTING.md into `.github/`. The README now fits on one screen; the full list of
+  features and settings is in `docs/features.md` and the credits in `docs/credits.md`.
+
 ### Fixed
 - **Start-up with portable mode no longer hangs in a folder it cannot write to**: the
   check whether the app folder is writable used `tempfile`, which on Windows retries

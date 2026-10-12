@@ -130,12 +130,7 @@ except ImportError:
 import pystray  # noqa: E402
 from pystray import Menu, MenuItem as Item  # noqa: E402
 
-import flyout  # noqa: E402
-import history  # noqa: E402
-import icons  # noqa: E402
-import updates  # noqa: E402
-import whatsnew  # noqa: E402
-import winevents  # noqa: E402
+from halo import flyout, history, icons, updates, whatsnew, winevents  # noqa: E402
 from providers import hidlist  # noqa: E402
 from providers import (AmInfinityProvider, AstroProvider, AsusProvider,  # noqa: E402
                        AudezeProvider, BarracudaProvider, BluetoothProvider, CorsairProvider, DeviceStatus,

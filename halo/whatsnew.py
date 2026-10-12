@@ -24,7 +24,7 @@ import threading
 import time
 from typing import Callable, List, Optional, Tuple
 
-import flyout
+from . import flyout
 
 log = logging.getLogger("halo_battery")
 
@@ -318,7 +318,7 @@ def app_logo(size: int, background: Tuple[int, int, int], key: Tuple[int, int, i
     """The app's logo (the exe icon: a green ring on a dark disc) as an RGB picture whose
     corners are the colour key."""
     from PIL import Image, ImageDraw
-    import icons
+    from . import icons
     ss = 4
     big = size * ss
     disc = Image.new("RGBA", (big, big), (0, 0, 0, 0))

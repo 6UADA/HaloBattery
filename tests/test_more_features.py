@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from test_hide_rename import FakeTrayIcon, HideRenameTestCase, hb, make_app  # noqa: E402
 from providers.base import DeviceStatus  # noqa: E402
-import icons  # noqa: E402
+from halo import icons  # noqa: E402
 
 REAL_DEVICE_ICON = hb.DeviceIcon          # setUp swaps it for the fake one
 KEY = "razer:00c8:1"

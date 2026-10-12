@@ -19,8 +19,8 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tests"))
 
-import updates  # noqa: E402
-import whatsnew  # noqa: E402
+from halo import updates  # noqa: E402
+from halo import whatsnew  # noqa: E402
 from test_hide_rename import hb, make_app  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
