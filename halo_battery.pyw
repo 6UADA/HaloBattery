@@ -30,6 +30,7 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
 import zlib
 from dataclasses import replace
 from logging.handlers import RotatingFileHandler
@@ -52,13 +53,26 @@ PORTABLE_MARKER = "portable.txt"   # next to the app: keep settings and the log 
 
 
 def _writable(folder: str) -> bool:
-    """True if a file can be created in the folder (os.access is not reliable on Windows)."""
+    """True if a file can be created in the folder (os.access is not reliable on Windows).
+
+    One exclusive open, not tempfile: on Windows tempfile retries PermissionError while
+    os.access says the folder is writable, even when its ACL denies creating files
+    (Program Files), and start-up hung in that loop (same fix as updates.can_install)."""
+    probe = os.path.join(folder, f".halobattery-write-{uuid.uuid4().hex}.tmp")
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_TEMPORARY", 0)
     try:
-        with tempfile.TemporaryFile(dir=folder):
-            pass
-        return True
+        fd = os.open(probe, flags, 0o600)
+        os.close(fd)
+        if os.name != "nt":
+            os.unlink(probe)
     except OSError:
         return False
+    return True
+
+
+def startup_retry_due(nothing_shown: bool, seconds_since_start: float) -> bool:
+    """True while the app has found no device yet and is still in its start-up window (#214)."""
+    return nothing_shown and seconds_since_start < STARTUP_RETRY_WINDOW
 
 
 def _calculate_data_dir(base_dir: str, appdata_dir: Optional[str] = None):
@@ -507,6 +521,12 @@ def single_instance() -> bool:
 # game, 4 = presentation mode. 5 = normal; 1, 6 and 7 are not about the screen.
 QUNS_FULLSCREEN = (2, 3, 4)
 QUIET_INTERVAL = 300       # s between polls while a game is full screen
+# Right after start-up (logon, or a boot with Windows Fast Startup) receivers can still be
+# waking up when the first poll runs. While nothing has been found yet, poll again every
+# STARTUP_RETRY_INTERVAL s during the first STARTUP_RETRY_WINDOW s instead of waiting the
+# whole poll interval (#214).
+STARTUP_RETRY_INTERVAL = 10
+STARTUP_RETRY_WINDOW = 90
 INPUT_WAKE_GAP = 5          # s between input-driven re-reads of a greyed (asleep)
                             # device: the first input re-reads it at once, and while
                             # input keeps coming (touchpad, typing) a poll every few
@@ -1043,6 +1063,7 @@ class App:
         self.was_quiet = False
         self.bt = BluetoothProvider()
         self.icons: Dict[str, DeviceIcon] = {}
+        self.started = time.monotonic()
         self.placeholder: Optional[pystray.Icon] = None
         self.lock = threading.RLock()
         self._bt_dup_logged: Set[str] = set()   # Bluetooth copies already reported
@@ -1904,6 +1925,9 @@ class App:
             interval = min(interval, 3)   # a new controller has no battery info yet: re-check soon
         if any(self.missing.values()):
             interval = min(interval, 3)   # a device just went missing: confirm quickly instead of in a minute
+        started = getattr(self, "started", None)
+        if started is not None and startup_retry_due(not self.icons, time.monotonic() - started):
+            interval = min(interval, STARTUP_RETRY_INTERVAL)   # receivers may still be waking up (#214)
         quiet = self.quiet()
         if quiet:
             # a game is full screen: every poll talks to the devices, so do it rarely.

@@ -6,6 +6,20 @@ and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Start-up with portable mode no longer hangs in a folder it cannot write to**: the
+  check whether the app folder is writable used `tempfile`, which on Windows retries
+  forever when the folder's permissions deny creating files (Program Files). It is now one
+  exclusive open, like the update check fixed in the 1.15.0 rebuild.
+- **Devices show up on their own after a boot with Windows Fast Startup** (#214): when the
+  first poll finds nothing, the app polls again every 10 s for the first 90 s instead of
+  waiting the whole poll interval, so receivers that wake up late appear without
+  **Refresh now**.
+- **Xbox One S controller (first revision, 045e:02e0) over Bluetooth shows a level**
+  (#236): Windows reports no Bluetooth battery for it, and the icon said only
+  "connected". The controller's own coarse level (empty / low / medium / full) is shown
+  instead; when Windows does report a Bluetooth level, that one is still used.
+
 ## [1.15.0] - 2026-10-12
 
 Updates install from the app: **Update to vX.Y.Z** downloads the new version, checks it,
