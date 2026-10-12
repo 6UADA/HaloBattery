@@ -118,6 +118,8 @@ Settings, the log and the diagnostics report live in `%APPDATA%\HaloBattery` (in
 - HyperX Cloud II Core Wireless protocol: @dantifrice ([#155](https://github.com/HeyOkay/HaloBattery/issues/155)), whose USBPcap capture of NGENUITY showed the same `66 89` battery / `66 8a` charging exchange as the Cloud III Wireless.
 - The reference implementations behind individual devices - HeadsetControl, rivalcfg, Solaar, G-Helper, HyperHeadset, mouse.xyz, [`@openmouse/protocol`](https://github.com/OpenMouse-Project/openmouse), keychron-battery-dkms, JBL_Baterry_Monitor and others - are credited next to the device they were used for in [docs/protocols.md](docs/protocols.md).
 
+The BlackShark V2 Pro 2020 battery request is documented in [OpenRazer issue #1280](https://github.com/openrazer/openrazer/issues/1280) and [Modzeleczek/RazerNariBatteryLevel](https://github.com/Modzeleczek/RazerNariBatteryLevel).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
