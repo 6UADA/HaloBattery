@@ -54,11 +54,11 @@ Right-click a device icon to open its menu. It looks like a Windows 11 menu (acr
 
 - **Rename…**: give the device your own name (for example, two controllers with the same name). **Reset name** goes back to the device's own name.
 - **Icon**: pick the pictogram of this device (Automatic, Mouse, Keyboard, Headset, Controller or Bluetooth), for example a controller over Bluetooth that shows the Bluetooth pictogram.
-- **Low battery alert at**: an alert level for this device only (off, 10–30%), or **Default** to follow Preferences. The red ring follows it too.
+- **Low battery alert at**: an alert level for this device only (off, 5–30%), or **Default** to follow Preferences. The red ring follows it too.
 - **Hide this device**: remove its icon, for example for a controller that always reports 100%.
 - **Refresh now**
 - **Preferences**:
-  - **Poll interval** (15 s to 5 min) and **Low battery alert** (off, 10–30%): change them with the − and + buttons or the mouse wheel, the menu stays open
+  - **Poll interval** (15 s to 5 min) and **Low battery alert** (off, 5–30%): change them with the − and + buttons or the mouse wheel, the menu stays open
   - **Alert when fully charged** (a notification once per charge, on by default)
   - **Estimated time left**: "about 5 h of use left" in the tooltip, from how fast the device has drained since its last charge. Only time the device is awake and on battery counts, and there is no estimate until it has been used for 30 minutes and dropped 3%. The history is kept in `%APPDATA%\HaloBattery\history.json`.
   - **Keep disconnected devices until restart** (off by default): a device that goes away stays in the tray, greyed, with its last level, until it comes back or the app restarts

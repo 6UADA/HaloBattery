@@ -20,19 +20,11 @@ and the project follows [Semantic Versioning](https://semver.org/).
 - **Preferences > Check for updates now**: checks at once, also when the daily check is
   off, and always answers with a notification (a newer version, the latest one already,
   or why it could not check).
-### Fixed
-- A sleeping Pulsar / ATK / VXE mouse keeps its place in the tray (the last reading,
-  greyed out) instead of leaving it, and it is re-read as soon as the PC is used again -
-  on the first input after a pause, and also while input keeps coming, which is what
-  touchpad use looks like (#87). Reported with hardware measurements by @huyxs2005,
-  and confirmed on his mouse after the second test build. A later screen-off report
-  showed the greyed reading still expired after five minutes, and the re-created icon
-  came back at a new tray position - the reading now stays for as long as the mouse's
-  receiver is plugged in, however long the mouse sleeps, and the reporter confirmed it
-  on both a manual and an automatic screen-off. On review (@ahmedkhursheed23)
-  the input wake was narrowed to readings whose provider marks them wake-on-input: a
-  greyed icon for a device that is simply off no longer re-polls the whole app on
-  every keystroke, and the input class is defined once instead of on every tick.
+- Preferences > "Keep disconnected devices until restart" (off by default): the icon of a controller, headset or Bluetooth device that disconnects stays in the tray, greyed, with its last level, until the device comes back or the app restarts (#151).
+- SteelSeries Arctis GameBuds X (`1038:2317`): the existing GameBuds exchange.
+  Confirmed on hardware by @DCVolo - the level matches SteelSeries GG (#146).
+- A 5% level for the low battery alert, in Preferences and in the per-device
+  **Low battery alert at** menu (@NuRoZ123).
 - MCHOSE A5 Pro Max (2023:f013 1K receiver, 2023:f015 4K receiver, 2023:f019 wired):
   a third MCHOSE exchange on a third vendor id - 64-byte feature reports, battery on
   page 0 command 0x83 - from the community web driver for this model
@@ -69,16 +61,6 @@ and the project follows [Semantic Versioning](https://semver.org/).
   one icon, and a reading that reports charging wins the merge. The four ids are
   HeadsetControl's, run on its author's hardware; **unverified in the app** until an
   XT/SE owner runs a build.
-
-### Fixed
-- Corsair Dark Core RGB Pro SE: read the battery the way the dongle actually answers (#56). The
-  1.13.0 build asked with ckb-next's "nxp" packet, which this dongle never answers; it speaks the
-  newer routed exchange (ckb-next's "bragi", OpenLinkHub's "slipstream") and returns the level in
-  tenths of a percent behind the mouse's route byte. A frame that is not exactly an answer - the
-  receiver's device records and notices - is no longer read as a level; that parsing was the 0 %
-  flash. The request and the answer were captured on the reporter's dongle; the reading is
-  confirmed on hardware: KKiruano ran the test build against his mouse and it showed
-  the same value as SignalRGB ([#56](https://github.com/HeyOkay/HaloBattery/issues/56)).
 - Steam Controller (2025) over its puck (#58): the battery is read from the controller's
   own input reports - the charge state and level in report 0x43, a connect and disconnect
   in reports 0x79 / 0x46 - listen-only, nothing is sent to the controller, so its lizard
@@ -105,6 +87,38 @@ and the project follows [Semantic Versioning](https://semver.org/).
   indicator remains visible; connecting the charger caused an immediate jump
   from 10 to 80. On battery and after charge completion, the reported level is
   displayed unchanged. Invalid levels are shown as unknown.
+
+### Fixed
+- Corsair Dark Core RGB Pro SE: read the battery the way the dongle actually answers (#56). The
+  1.13.0 build asked with ckb-next's "nxp" packet, which this dongle never answers; it speaks the
+  newer routed exchange (ckb-next's "bragi", OpenLinkHub's "slipstream") and returns the level in
+  tenths of a percent behind the mouse's route byte. A frame that is not exactly an answer - the
+  receiver's device records and notices - is no longer read as a level; that parsing was the 0 %
+  flash. The request and the answer were captured on the reporter's dongle; the reading is
+  confirmed on hardware: KKiruano ran the test build against his mouse and it showed
+  the same value as SignalRGB ([#56](https://github.com/HeyOkay/HaloBattery/issues/56)).
+- A sleeping Pulsar / ATK / VXE mouse keeps its place in the tray (the last reading,
+  greyed out) instead of leaving it, and it is re-read as soon as the PC is used again -
+  on the first input after a pause, and also while input keeps coming, which is what
+  touchpad use looks like (#87). Reported with hardware measurements by @huyxs2005,
+  and confirmed on his mouse after the second test build. A later screen-off report
+  showed the greyed reading still expired after five minutes, and the re-created icon
+  came back at a new tray position - the reading now stays for as long as the mouse's
+  receiver is plugged in, however long the mouse sleeps, and the reporter confirmed it
+  on both a manual and an automatic screen-off. On review (@ahmedkhursheed23)
+  the input wake was narrowed to readings whose provider marks them wake-on-input: a
+  greyed icon for a device that is simply off no longer re-polls the whole app on
+  every keystroke, and the input class is defined once instead of on every tick.
+- 8BitDo Pro 3 in D-input mode: the level is now shown at all times, over Bluetooth too.
+  Its only input report is 0x04 on both transports and always carries the level, but the
+  app waited for report 0x01 over Bluetooth and discarded every report, so the icon kept
+  saying "level shown only while Steam or a game uses the controller". Confirmed on a
+  real Pro 3 over Bluetooth, with Steam closed.
+- WLmouse receiver with the mouse switched off: the walk of every vendor collection
+  plus the two-second listen ran on every poll forever, even after the greyed icon
+  was gone. It now runs every fifth poll once nothing is shown - and at once when
+  the receiver's device set changes, such as the charging cable appearing (#62
+  item 5, reported by @ahmedkhursheed23).
 
 ## [1.14.0] - 2026-10-05
 
@@ -169,18 +183,6 @@ while charging. The README is shorter; the device list moved to `docs/devices.md
   the headset to speak and held back the icons of all other devices. The app now listens
   to the receiver all the time in the background, so polls do not wait, and a level the
   headset sends between polls is no longer missed.
-### Fixed
-- 8BitDo Pro 3 in D-input mode: the level is now shown at all times, over Bluetooth too.
-  Its only input report is 0x04 on both transports and always carries the level, but the
-  app waited for report 0x01 over Bluetooth and discarded every report, so the icon kept
-  saying "level shown only while Steam or a game uses the controller". Confirmed on a
-  real Pro 3 over Bluetooth, with Steam closed.
-- Preferences > "Keep disconnected devices until restart" (off by default): the icon of a controller, headset or Bluetooth device that disconnects stays in the tray, greyed, with its last level, until the device comes back or the app restarts (#151).
-- WLmouse receiver with the mouse switched off: the walk of every vendor collection
-  plus the two-second listen ran on every poll forever, even after the greyed icon
-  was gone. It now runs every fifth poll once nothing is shown - and at once when
-  the receiver's device set changes, such as the charging cable appearing (#62
-  item 5, reported by @ahmedkhursheed23).
 
 ## [1.13.0] - 2026-09-29
 
