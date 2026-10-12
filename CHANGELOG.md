@@ -84,6 +84,12 @@ while charging. The README is shorter; the device list moved to `docs/devices.md
   the headset to speak and held back the icons of all other devices. The app now listens
   to the receiver all the time in the background, so polls do not wait, and a level the
   headset sends between polls is no longer missed.
+### Fixed
+- 8BitDo Pro 3 in D-input mode: the level is now shown at all times, over Bluetooth too.
+  Its only input report is 0x04 on both transports and always carries the level, but the
+  app waited for report 0x01 over Bluetooth and discarded every report, so the icon kept
+  saying "level shown only while Steam or a game uses the controller". Confirmed on a
+  real Pro 3 over Bluetooth, with Steam closed.
 
 ## [1.13.0] - 2026-09-29
 
