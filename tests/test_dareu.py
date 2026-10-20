@@ -27,8 +27,8 @@ SHAPE = [
 ]
 
 
-def reply(level, charging=0, command=0x04, status=0x00, break_checksum=False):
-    frame = [0x09, command, status, 0, 0, 2, level, charging] + [0] * 8
+def reply(level, charging=0, command=0x04, status=0x00, break_checksum=False, header=0x09):
+    frame = [header, command, status, 0, 0, 2, level, charging] + [0] * 8
     ck = D.checksum(frame) ^ (0xFF if break_checksum else 0)
     return bytes(frame + [ck])
 
@@ -104,6 +104,24 @@ class DareuTest(unittest.TestCase):
         out, _ = self.poll([reply(0, status=0x01), reply(10, command=0x0A),
                             reply(30, break_checksum=True), reply(77)])
         self.assertEqual(out[0].level, 77)
+
+    def test_wrong_header_is_refused(self):
+        # a well-formed frame with the request's header 0x08, checksum included
+        self.assertIsNone(D.parse_power(reply(50, header=0x08)))
+        self.assertEqual(D.parse_power(reply(50)), (50, False))
+
+    def test_asleep_keeps_last_reading_greyed_until_unplugged(self):
+        rx = FakeReceiver([reply(90)])
+        D.hidlist = types.SimpleNamespace(enumerate=rx.enumerate)
+        D.hid = types.SimpleNamespace(device=rx.device)
+        p = D.DareuProvider()
+        self.assertTrue(p.poll()[0].online)
+        s, = p.poll()           # asleep: no reply, receiver still listed
+        self.assertEqual((s.level, s.online, s.wake_on_input), (90, False, True))
+        rx.pid = 0x9999         # receiver unplugged
+        self.assertEqual(p.poll(), [])
+        rx.pid = 0x1074         # plugged back in, mouse still asleep: nothing stale
+        self.assertEqual(p.poll(), [])
 
     def test_no_valid_reply_no_device(self):
         out, _ = self.poll([reply(0, status=0x01), reply(101)])

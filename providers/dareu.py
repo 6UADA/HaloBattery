@@ -1,7 +1,7 @@
 """DAREU A950 on its Compx 2.4 GHz receiver, over USB/HID, without vendor software.
 
-Protocol from vamyane/MousePower (MIT), src/mousepower/core/providers/dareu_compx.py,
-which lists 260d:1074 and 260d:1084. It is the Compx frame providers/pulsar.py sends -
+Protocol from vamyane/MousePower (MIT), src/mousepower/core/providers/dareu_compx.py at
+commit 684b5aa70e36952bac1cda094291c2ccd39c1e34, which lists 260d:1074 and 260d:1084. It is the Compx frame providers/pulsar.py sends -
 17 bytes, report id 0x08, command 0x04, checksum 0x55 minus the sum of bytes 0..15 - but
 the receiver takes it as a FEATURE report on the ff02:0002 collection and answers with
 an INPUT report on ff01:0000, under header 0x09:
@@ -13,10 +13,14 @@ MousePower warns that report 0x06 on ff04 always reads 100 three times: it is no
 
 Read on hardware on 260d:1074 (A950, 2.4 GHz): 09 04 00 00 00 02 5a 00 .. ec = 90 %,
 on battery. 260d:1084 is claimed from MousePower only.
+
+A sleeping mouse does not answer while its receiver stays plugged in. As in
+providers/pulsar.py, the last reading is then kept greyed out for as long as the
+receiver is in the USB tree; only a receiver that leaves it drops the device.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import hid
 
@@ -59,6 +63,7 @@ class DareuProvider(Provider):
 
     def __init__(self):
         self._diag: List[str] = []
+        self._last: Dict[str, Tuple[str, int, bool]] = {}   # key -> (name, level, charging)
 
     def _query(self, command_path: bytes, reply_path: bytes) -> Optional[Tuple[int, bool]]:
         reply, command = hid.device(), hid.device()
@@ -102,16 +107,24 @@ class DareuProvider(Provider):
                      for d in infos if d["product_id"] == pid}
             if not paths:
                 continue
+            key = f"dareu:{VID:04x}{pid:04x}"
             self._diag.append(f"[DAREU] pid={VID:04x}:{pid:04x} '{name}'")
             if COMMAND_USAGE not in paths or REPLY_USAGE not in paths:
                 self._diag.append("  missing the ff02:0002 or ff01:0000 collection")
                 continue
             parsed = self._query(paths[COMMAND_USAGE], paths[REPLY_USAGE])
-            if parsed is None:
-                continue
-            level, charging = parsed
-            out.append(DeviceStatus(f"dareu:{VID:04x}{pid:04x}", name, level, charging,
-                                    True, "dareu", kind="mouse"))
+            if parsed is not None:
+                level, charging = parsed
+                self._last[key] = (name, level, charging)
+                out.append(DeviceStatus(key, name, level, charging, True, "dareu", kind="mouse"))
+            elif key in self._last:
+                _, level, charging = self._last[key]
+                self._diag.append(f"  keeping {level}% greyed (the receiver is still plugged in)")
+                out.append(DeviceStatus(key, name, level, charging, False, "dareu",
+                                        kind="mouse", wake_on_input=True))
+        # a receiver gone from the USB tree drops its last reading
+        for key in set(self._last) - {s.key for s in out}:
+            del self._last[key]
         return out
 
     def diagnostics(self) -> List[str]:
