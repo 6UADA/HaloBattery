@@ -14,12 +14,14 @@ MousePower warns that report 0x06 on ff04 always reads 100 three times: it is no
 Read on hardware on 260d:1074 (A950, 2.4 GHz): 09 04 00 00 00 02 5a 00 .. ec = 90 %,
 on battery. 260d:1084 is claimed from MousePower only.
 
-A sleeping mouse does not answer while its receiver stays plugged in. As in
-providers/pulsar.py, the last reading is then kept greyed out for as long as the
-receiver is in the USB tree; only a receiver that leaves it drops the device.
+A sleeping or switched-off mouse does not answer while its receiver stays plugged in
+(the two cannot be told apart). Its last reading is then kept greyed out for
+ASLEEP_KEEP seconds, as in the Logitech, WLmouse and LAMZU providers, and then dropped,
+so the icon leaves the tray; a receiver that leaves the USB tree drops it at once.
 """
 from __future__ import annotations
 
+import time
 from typing import Dict, List, Optional, Tuple
 
 import hid
@@ -37,6 +39,7 @@ COMMAND_USAGE = (0xFF02, 0x0002)   # takes the request as a feature report
 REPLY_USAGE = (0xFF01, 0x0000)     # sends the answer as an input report
 REPLY_HEADER = 0x09
 STATUS_DATA = 0x00
+ASLEEP_KEEP = 300   # s a silent mouse stays greyed, as in the Logitech, WLmouse and LAMZU providers
 
 READ_ATTEMPTS = 4
 READ_TIMEOUT_MS = 250
@@ -63,7 +66,7 @@ class DareuProvider(Provider):
 
     def __init__(self):
         self._diag: List[str] = []
-        self._last: Dict[str, Tuple[str, int, bool]] = {}   # key -> (name, level, charging)
+        self._last: Dict[str, Tuple[str, int, bool, float]] = {}   # key -> (name, level, charging, seen)
 
     def _query(self, command_path: bytes, reply_path: bytes) -> Optional[Tuple[int, bool]]:
         reply, command = hid.device(), hid.device()
@@ -115,14 +118,14 @@ class DareuProvider(Provider):
             parsed = self._query(paths[COMMAND_USAGE], paths[REPLY_USAGE])
             if parsed is not None:
                 level, charging = parsed
-                self._last[key] = (name, level, charging)
+                self._last[key] = (name, level, charging, time.time())
                 out.append(DeviceStatus(key, name, level, charging, True, "dareu", kind="mouse"))
-            elif key in self._last:
-                _, level, charging = self._last[key]
-                self._diag.append(f"  keeping {level}% greyed (the receiver is still plugged in)")
+            elif key in self._last and time.time() - self._last[key][3] < ASLEEP_KEEP:
+                _, level, charging, _ = self._last[key]
+                self._diag.append(f"  keeping {level}% greyed for up to {ASLEEP_KEEP} s")
                 out.append(DeviceStatus(key, name, level, charging, False, "dareu",
                                         kind="mouse", wake_on_input=True))
-        # a receiver gone from the USB tree drops its last reading
+        # a receiver gone from the USB tree, or a mouse silent for ASLEEP_KEEP, drops the reading
         for key in set(self._last) - {s.key for s in out}:
             del self._last[key]
         return out

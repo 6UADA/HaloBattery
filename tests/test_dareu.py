@@ -123,6 +123,17 @@ class DareuTest(unittest.TestCase):
         rx.pid = 0x1074         # plugged back in, mouse still asleep: nothing stale
         self.assertEqual(p.poll(), [])
 
+    def test_silent_mouse_dropped_after_asleep_keep(self):
+        rx = FakeReceiver([reply(90)])
+        D.hidlist = types.SimpleNamespace(enumerate=rx.enumerate)
+        D.hid = types.SimpleNamespace(device=rx.device)
+        p = D.DareuProvider()
+        key = p.poll()[0].key
+        name, level, charging, seen = p._last[key]
+        p._last[key] = (name, level, charging, seen - D.ASLEEP_KEEP - 1)
+        self.assertEqual(p.poll(), [])      # receiver still plugged in, mouse silent too long
+        self.assertNotIn(key, p._last)
+
     def test_no_valid_reply_no_device(self):
         out, _ = self.poll([reply(0, status=0x01), reply(101)])
         self.assertEqual(out, [])
